@@ -1,6 +1,14 @@
 {
   "compilerOptions": {
-    // ...
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "lib": ["ESNext", "DOM"],        // adds Promise, Map, Set, etc.
+    "skipLibCheck": true,            // (optional, avoids noise from deps)
+    "strict": true,
+    "allowJs": true,
+    "jsx": "preserve",
+    "esModuleInterop": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
   "references": [
