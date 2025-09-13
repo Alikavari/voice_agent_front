@@ -78,7 +78,7 @@ const stopRecording = async () => {
       formData.append('voice', blob, 'recording.webm');
 
       try {
-        const resp = await fetch(ENV.API_URL, {
+        const resp = await fetch(ENV.API_URL + '/upload', {
           method: 'POST',
           body: formData,
         });
