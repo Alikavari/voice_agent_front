@@ -11,17 +11,23 @@ RUN pnpm install
 
 COPY . ./
 
-RUN pnpm run build
+# TODO: use it or remove
+# RUN pnpm run build
 
-# Stage 2: Serve with nginx
-FROM nginx:stable-alpine
+EXPOSE 5173
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+RUN pnpm run dev
 
-# Copy custom nginx config (optional, for SPA routing)
-# Uncomment if you want history mode support for Vue Router
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# TODO: use it or remove
+# # Stage 2: Serve with nginx
+# FROM nginx:stable-alpine
+#
+# COPY --from=builder /app/dist /usr/share/nginx/html
+#
+# # Copy custom nginx config (optional, for SPA routing)
+# # Uncomment if you want history mode support for Vue Router
+# # COPY nginx.conf /etc/nginx/conf.d/default.conf
+#
+# EXPOSE 80
+#
+# CMD ["nginx", "-g", "daemon off;"]
