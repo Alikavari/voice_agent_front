@@ -16,7 +16,7 @@ COPY . ./
 
 EXPOSE 5173
 
-RUN pnpm run dev
+CMD ["pnpm", "run", "dev"]
 
 # TODO: use it or remove
 # # Stage 2: Serve with nginx
