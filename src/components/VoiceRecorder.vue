@@ -17,14 +17,6 @@
         >
           Start Recording
         </button>
-
-        <button
-          class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow"
-          :disabled="!isRecording"
-          @click="stopRecording"
-        >
-          Stop & Upload
-        </button>
       </div>
 
       <p v-if="uploading" class="text-gray-600 font-medium">Uploading...</p>
@@ -46,6 +38,14 @@ const audioChunks = ref([]);
 const uploading = ref(false);
 const uploadResult = ref(null);
 
+// WebAudio stuff for VAD
+let audioContext = null;
+let analyser = null;
+let source = null;
+let silenceTimeout = null;
+const SILENCE_DURATION = 3000; // ms
+const SILENCE_THRESHOLD = 0.02; // amplitude RMS threshold
+
 // Form state controlled by VoiceRecorder
 const form = reactive({
   amount: 0,
@@ -55,55 +55,101 @@ const form = reactive({
 });
 
 const startRecording = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder.value = new MediaRecorder(stream);
-  audioChunks.value = [];
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder.value = new MediaRecorder(stream);
+    audioChunks.value = [];
 
-  mediaRecorder.value.ondataavailable = (e) => audioChunks.value.push(e.data);
-  mediaRecorder.value.start();
-  isRecording.value = true;
-  uploadResult.value = null;
+    mediaRecorder.value.ondataavailable = (e) => audioChunks.value.push(e.data);
+    mediaRecorder.value.onstop = handleStop;
+
+    mediaRecorder.value.start();
+    isRecording.value = true;
+    uploadResult.value = null;
+
+    // Setup Web Audio for silence detection
+    audioContext = new AudioContext();
+    source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+    analyser.fftSize = 2048;
+
+    monitorSilence();
+  } catch (err) {
+    console.error('Error accessing microphone', err);
+    alert('Could not access microphone. Check permissions.');
+  }
 };
 
-const stopRecording = async () => {
-  return new Promise((resolve) => {
-    mediaRecorder.value.onstop = async () => {
-      isRecording.value = false;
+function monitorSilence() {
+  const dataArray = new Uint8Array(analyser.fftSize);
 
-      const blob = new Blob(audioChunks.value, { type: 'audio/webm' });
+  function check() {
+    analyser.getByteTimeDomainData(dataArray);
 
-      // Upload
-      uploading.value = true;
-      const formData = new FormData();
-      formData.append('voice', blob, 'recording.webm');
+    // Calculate normalized RMS
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      const normalized = (dataArray[i] - 128) / 128;
+      sum += normalized * normalized;
+    }
+    const rms = Math.sqrt(sum / dataArray.length);
 
-      try {
-        const resp = await fetch(ENV.API_URL + '/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const result = await resp.json();
-        console.log('the position: ', result.position);
-        uploadResult.value = 'Upload successful!';
-
-        // Example: update TradeForm fields based on server response
-        // Assume server returns { amount: 10, token: 'BTC', leverage: 5, position: 'long' }
-        if (result.amount) form.amount = result.amount;
-        if (result.token) form.token = result.token;
-        if (result.leverage) form.leverage = result.leverage;
-        if (result.position) form.position = result.position;
-      } catch (err) {
-        console.error(err);
-        uploadResult.value = 'Upload failed!';
-      } finally {
-        uploading.value = false;
+    if (rms < SILENCE_THRESHOLD) {
+      if (!silenceTimeout) {
+        silenceTimeout = setTimeout(() => stopRecording(), SILENCE_DURATION);
       }
+    } else {
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
 
-      resolve();
-    };
-    mediaRecorder.value.stop();
-  });
-};
+    if (isRecording.value) requestAnimationFrame(check);
+  }
+
+  check();
+}
+
+function stopRecording() {
+  if (!isRecording.value) return;
+  mediaRecorder.value.stop();
+  isRecording.value = false;
+
+  if (silenceTimeout) clearTimeout(silenceTimeout);
+  if (audioContext) audioContext.close();
+}
+
+async function handleStop() {
+  const blob = new Blob(audioChunks.value, { type: 'audio/webm' });
+
+  // Upload
+  uploading.value = true;
+  const formData = new FormData();
+  formData.append('voice', blob, 'recording.webm');
+
+  try {
+    const resp = await fetch(ENV.API_URL + '/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const result = await resp.json();
+    console.log('the position: ', result.position);
+    uploadResult.value = 'Upload successful!';
+
+    // Update TradeForm fields based on server response
+    if (result.amount) form.amount = result.amount;
+    if (result.token) form.token = result.token;
+    if (result.leverage) form.leverage = result.leverage;
+    if (result.position) form.position = result.position;
+  } catch (err) {
+    console.error(err);
+    uploadResult.value = 'Upload failed!';
+  } finally {
+    uploading.value = false;
+  }
+}
 </script>
 
 <style scoped>
