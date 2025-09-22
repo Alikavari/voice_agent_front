@@ -49,8 +49,8 @@
           <label for="leverage" class="text-sm font-medium text-gray-700"
             >Leverage</label
           >
-          <span class="text-sm font-semibold text-blue-600"
-            >x{{ form.leverage }}</span
+          <span class="text-sm font-semibold text-blue-600">
+            x{{ form.leverage }}</span
           >
         </div>
         <input
@@ -118,20 +118,37 @@ const setPosition = (pos) => {
 // Watch for backend updates and enforce valid position
 watchEffect(() => {
   if (props.serverResponse) {
-    if (props.serverResponse.token) form.token = props.serverResponse.token;
+    console.log('📩 Server response:', props.serverResponse);
 
+    // Token
+    if (
+      Object.hasOwn(props.serverResponse, 'token') &&
+      props.serverResponse.token
+    ) {
+      form.token = props.serverResponse.token;
+    }
+
+    // Amount (allow 0.0 explicitly)
+    if (Object.hasOwn(props.serverResponse, 'amount')) {
+      console.log('➡️ Updating amount to:', props.serverResponse.amount);
+      form.amount = Number(props.serverResponse.amount);
+    }
+
+    // Leverage (allow 0 too)
+    if (Object.hasOwn(props.serverResponse, 'leverage')) {
+      console.log('➡️ Updating leverage to:', props.serverResponse.leverage);
+      form.leverage = Number(props.serverResponse.leverage);
+    }
+
+    // Position
     if (
       props.serverResponse.position === 'long' ||
       props.serverResponse.position === 'short'
     ) {
+      console.log('➡️ Updating position to:', props.serverResponse.position);
       form.position = props.serverResponse.position;
     }
-    // else {
-    //   // Default to long if position is invalid or missing
-    //   form.position = 'long';
-    // }
   } else if (!form.position) {
-    // Ensure default position if none set
     form.position = 'long';
   }
 });
@@ -139,7 +156,7 @@ watchEffect(() => {
 const handleSubmit = () => {
   console.log('Trade submitted:', { ...form });
   alert(
-    `Trade: ${form.amount} ${form.token} | x${form.leverage} | ${form.position.toUpperCase()}`
+    `Trade: ${form.amount} ${form.token} | x ${form.leverage} | ${form.position.toUpperCase()}`
   );
 };
 </script>

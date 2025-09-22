@@ -135,11 +135,11 @@ async function handleStop() {
       body: formData,
     });
     const result = await resp.json();
-    console.log('the position: ', result.position);
+    console.log('the backend result: ', result);
     uploadResult.value = 'Upload successful!';
 
     // Update TradeForm fields based on server response
-    if (result.amount) form.amount = result.amount;
+    if (result.amount != null) form.amount = result.amount;
     if (result.token) form.token = result.token;
     if (result.leverage) form.leverage = result.leverage;
     if (result.position) form.position = result.position;
