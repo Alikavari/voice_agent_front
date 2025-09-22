@@ -43,7 +43,7 @@ let audioContext = null;
 let analyser = null;
 let source = null;
 let silenceTimeout = null;
-const SILENCE_DURATION = 3000; // ms
+const SILENCE_DURATION = 2000; // ms
 const SILENCE_THRESHOLD = 0.02; // amplitude RMS threshold
 
 // Form state controlled by VoiceRecorder
