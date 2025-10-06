@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { defineProps, watchEffect } from 'vue';
+import { ref, defineProps, onMounted, watchEffect } from 'vue';
 
 const props = defineProps({
   form: { type: Object, required: true },
@@ -108,46 +108,44 @@ const props = defineProps({
 });
 
 const form = props.form;
-const tokens = ['BTC', 'ETH', 'SOL', 'ADA', 'XRP'];
+const tokens = ref([]); // will load dynamically
+
+// Fetch all symbols from markets.json
+onMounted(async () => {
+  try {
+    const res = await fetch('/markets.json'); // must be in /public or served by API
+    const data = await res.json();
+    tokens.value = data.map((m) => m.symbol).filter(Boolean);
+  } catch (err) {
+    console.error('❌ Failed to load markets.json:', err);
+  }
+});
 
 // Ensure only one checkbox is active
 const setPosition = (pos) => {
   form.position = pos;
 };
 
-// Watch for backend updates and enforce valid position
+// Watch for backend updates
 watchEffect(() => {
   if (props.serverResponse) {
-    console.log('📩 Server response:', props.serverResponse);
-
-    // Token
     if (
       Object.hasOwn(props.serverResponse, 'token') &&
       props.serverResponse.token
-    ) {
+    )
       form.token = props.serverResponse.token;
-    }
 
-    // Amount (allow 0.0 explicitly)
-    if (Object.hasOwn(props.serverResponse, 'amount')) {
-      console.log('➡️ Updating amount to:', props.serverResponse.amount);
+    if (Object.hasOwn(props.serverResponse, 'amount'))
       form.amount = Number(props.serverResponse.amount);
-    }
 
-    // Leverage (allow 0 too)
-    if (Object.hasOwn(props.serverResponse, 'leverage')) {
-      console.log('➡️ Updating leverage to:', props.serverResponse.leverage);
+    if (Object.hasOwn(props.serverResponse, 'leverage'))
       form.leverage = Number(props.serverResponse.leverage);
-    }
 
-    // Position
     if (
       props.serverResponse.position === 'long' ||
       props.serverResponse.position === 'short'
-    ) {
-      console.log('➡️ Updating position to:', props.serverResponse.position);
+    )
       form.position = props.serverResponse.position;
-    }
   } else if (!form.position) {
     form.position = 'long';
   }
