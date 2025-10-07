@@ -1,10 +1,13 @@
 <script setup lang="ts">
 // import FormComponent from './components/TradeForm.vue';
 import VoiceRecorder from './components/VoiceRecorder.vue';
+import MicSpinner from './components/MicSpinner.vue';
+import WakeWordDemo from './WakeWordDemo.vue';
 </script>
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100">
+    <MicSpinner :visible="false" />
     <!-- <FormComponent /> -->
     <VoiceRecorder />
   </div>
