@@ -28,7 +28,7 @@ import { PorcupineWorker, BuiltInKeyword } from '@picovoice/porcupine-web';
 
 const ACCESS_KEY = ENV.PICOVOICE_ACCESS_KEY;
 const MODEL_PATH = '/porcupine_params.pv'; // must be in /public
-const wakeWordLabel = 'Alexa'; // visible label for UI
+const wakeWordLabel = 'Hey Echo'; // visible label for UI
 
 // --- State ---
 const isRecording = ref(false);
@@ -56,12 +56,15 @@ const form = reactive({
 
 // --- Wake-word setup ---
 let porcupine = null;
-
+const keywordModel = {
+  publicPath: '/Hey-Echo_en_wasm_v3_0_0.ppn',
+  label: 'Hey Echo',
+};
 onMounted(async () => {
   try {
     porcupine = await PorcupineWorker.create(
       ACCESS_KEY,
-      BuiltInKeyword.Alexa, // or Jarvis, or custom .ppn
+      [keywordModel], // or Jarvis, or custom .ppn
       onWakeWordDetected,
       { publicPath: MODEL_PATH }
     );
