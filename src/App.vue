@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // import FormComponent from './components/TradeForm.vue';
 import VoiceRecorder from './components/VoiceRecorder.vue';
+import WakeWord from './components/WakeWord.vue';
 </script>
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100">
     <!-- <FormComponent /> -->
+    <WakeWord />
     <VoiceRecorder />
   </div>
 </template>
