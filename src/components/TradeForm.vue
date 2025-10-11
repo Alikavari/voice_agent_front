@@ -122,14 +122,14 @@ onMounted(async () => {
   try {
     const res = await fetch('/markets.json'); // must be in /public or served by API
     const data = await res.json();
-    tokens.value = data.map((m) => m.symbol).filter(Boolean);
+    tokens.value = data.map((m: { symbol: string }) => m.symbol).filter(Boolean);
   } catch (err) {
     console.error('❌ Failed to load markets.json:', err);
   }
 });
 
 // Ensure only one checkbox is active
-const setPosition = (pos) => {
+const setPosition = (pos: 'long' | 'short') => {
   form.position = pos;
 };
 
