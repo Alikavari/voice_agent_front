@@ -14,15 +14,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import visualizer from 'visualizer.js';
 
 const status = ref('Allow microphone access to record a keyword'); // 👈 add this
 
 onMounted(() => {
+  (window as any).visualizer = visualizer;
   const globalScripts = [
     '/lib/jquery-3.3.1.min.js',
     '/lib/tfjs/tf.min.js',
     '/lib/meyda.js',
-    '/lib/visualizer.js/dist/visualizer.global.min.js',
 
     '/common/baseController.js',
     '/common/config.js',

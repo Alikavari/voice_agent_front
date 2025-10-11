@@ -1,14 +1,22 @@
 <script setup lang="ts">
-// import FormComponent from './components/TradeForm.vue';
+import { reactive } from 'vue';
 import VoiceRecorder from './components/VoiceRecorder.vue';
 import WakeWord from './components/WakeWord.vue';
+import TradeForm, { type TradeFormData } from './components/TradeForm.vue';
+
+const form = reactive<TradeFormData>({
+  amount: 0,
+  token: '',
+  leverage: 1,
+  position: 'long',
+});
 </script>
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <!-- <FormComponent /> -->
+    <TradeForm :form="form" />
     <WakeWord />
-    <VoiceRecorder />
+    <VoiceRecorder :form="form" />
   </div>
 </template>
 

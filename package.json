@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
+    "visualizer.js": "^4.0.0",
     "vue": "^3.5.18"
   },
   "devDependencies": {

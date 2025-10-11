@@ -99,13 +99,20 @@
   </div>
 </template>
 
-<script setup>
-import { ref, defineProps, onMounted, watchEffect } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted, watchEffect } from 'vue';
 
-const props = defineProps({
-  form: { type: Object, required: true },
-  serverResponse: { type: Object, default: null },
-});
+export interface TradeFormData {
+  amount: number;
+  token: string;
+  leverage: number;
+  position: string;
+}
+
+const props = defineProps<{
+  form: TradeFormData;
+  serverResponse?: Record<string, any> | null;
+}>();
 
 const form = props.form;
 const tokens = ref([]); // will load dynamically

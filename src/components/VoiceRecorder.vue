@@ -1,10 +1,6 @@
 <template>
   <div class="voice-recorder-container space-y-6">
     <!-- 🔹 Trade form controlled by VoiceRecorder -->
-    <TradeForm
-      :form="form"
-      @update:form="(val: Partial<TradeFormData>) => Object.assign(form, val)"
-    />
 
     <div class="voice-recorder p-4 bg-white shadow rounded space-y-4">
       <h2 class="text-lg font-semibold">Voice Recorder (Wake-Word)</h2>
@@ -24,29 +20,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
-import TradeForm from './TradeForm.vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { ENV } from '../../env'; // ← must export { API_URL } or ENV.API_URL
+import type { TradeFormData } from './TradeForm.vue';
 
 // --------------------
-// 🔹 Typed form schema
+// 🔹 Component Props
 // --------------------
-export interface TradeFormData {
-  amount: number;
-  token: string;
-  leverage: number;
-  position: string;
-}
-
-// --------------------
-// 🔹 Reactive form data
-// --------------------
-const form = reactive<TradeFormData>({
-  amount: 0,
-  token: '',
-  leverage: 1,
-  position: 'long',
-});
+const props = defineProps<{
+  form: TradeFormData;
+}>();
 
 // --------------------
 // 🔹 Recorder state
@@ -217,10 +200,10 @@ async function handleStop() {
     console.log('✅ Server response:', result);
 
     uploadResult.value = 'Upload successful!';
-    if (result.amount != null) form.amount = result.amount;
-    if (result.token) form.token = result.token;
-    if (result.leverage) form.leverage = result.leverage;
-    if (result.position) form.position = result.position;
+    if (result.amount != null) props.form.amount = result.amount;
+    if (result.token) props.form.token = result.token;
+    if (result.leverage) props.form.leverage = result.leverage;
+    if (result.position) props.form.position = result.position;
   } catch (err) {
     console.error('❌ Upload failed:', err);
     uploadResult.value = 'Upload failed!';
