@@ -9,7 +9,9 @@
         Recording...
       </p>
 
-      <p v-else class="text-gray-600">Say <b>"GO"</b> to begin trading.</p>
+      <p v-else class="text-gray-600">
+        Say <b>"Up echoes"</b> to begin trading.
+      </p>
 
       <p v-if="uploading" class="text-gray-600 font-medium">Uploading...</p>
       <p v-if="uploadResult" class="text-green-600 font-medium">
@@ -60,11 +62,11 @@ function onKeywordDetected(e: Event) {
   const command = (e as CustomEvent<string>).detail?.toLowerCase?.() ?? '';
   console.log('🗣️ keyword detected:', command);
 
-  if (command === 'go') {
+  if (command === 'up') {
     const now = Date.now();
     if (!isRecording.value && now - lastStartAt > MIN_RETRIGGER_MS) {
       lastStartAt = now;
-      console.log("🎤 Starting recording because 'GO' detected");
+      console.log("🎤 Starting recording because 'up' detected");
       startRecording();
     }
   }
