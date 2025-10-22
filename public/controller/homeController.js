@@ -1,4 +1,17 @@
 let toggleTime = 1500;
+let wakewordEnabled = true; // 🔹 track pause/resume state
+
+// ✅ Listen for control events from VoiceRecorder
+window.addEventListener('wakeword-control', (e) => {
+  const action = e.detail;
+  if (action === 'pause') {
+    console.log('🛑 Wake-word detection paused by VoiceRecorder');
+    wakewordEnabled = false;
+  } else if (action === 'resume') {
+    console.log('▶️ Wake-word detection resumed by VoiceRecorder');
+    wakewordEnabled = true;
+  }
+});
 
 function init_view(commands) {
   reordered = [];
@@ -51,8 +64,9 @@ function toggleCommand(command) {
 }
 
 function updateToggledCommand(command) {
-  if (command == 'silence') command = 'unknown';
+  if (!wakewordEnabled) return; // 🔸 Skip everything while paused
 
+  if (command == 'silence') command = 'unknown';
   const currentTime = new Date().getTime();
 
   if (command != 'unknown') {
@@ -90,6 +104,9 @@ setTimeout(() => {
     .done(function () {
       console.log('🎙️ Mic initialized successfully!');
       setInterval(function () {
+        // 🔸 Skip recognition while wake-word is paused
+        if (!wakewordEnabled) return;
+
         const offlineProcessor = new OfflineAudioProcessor(
           audioConfig,
           micAudioProcessor.getData()
