@@ -45,11 +45,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import type { TradeFormData } from './TradeForm.vue';
-
+import { ENV } from '../../env';
 const props = defineProps<{ form: TradeFormData }>();
 
 // ---- Backend config ----
-const API_BASE = 'http://localhost:8000';
+const API_BASE = ENV.API_URL;
 const TOKEN_URL = `${API_BASE}/get_token`;
 const UPLOAD_URL = `${API_BASE}/upload`;
 
