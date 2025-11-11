@@ -46,14 +46,16 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import type { TradeFormData } from './TradeForm.vue';
 import { ENV } from '../../env';
+
 const props = defineProps<{ form: TradeFormData }>();
 
-// ---- Backend config ----
+// ------------------------------------------------------------
+// Backend
+// ------------------------------------------------------------
 const API_BASE = ENV.API_URL;
 const TOKEN_URL = `${API_BASE}/get_token`;
 const UPLOAD_URL = `${API_BASE}/upload`;
 
-// ---- AssemblyAI WS ----
 const WS_BASE =
   'wss://streaming.assemblyai.com/v3/ws' +
   '?sample_rate=16000' +
@@ -62,7 +64,9 @@ const WS_BASE =
   '&min_end_of_turn_silence_when_confident=800' +
   '&max_turn_silence=2000';
 
-// ---- UI state ----
+// ------------------------------------------------------------
+// UI State
+// ------------------------------------------------------------
 const hasMicPermission = ref(true);
 const statusMessage = ref<'idle' | 'preparing' | 'listening' | 'analyzing'>(
   'idle'
@@ -73,11 +77,11 @@ const partialTranscript = ref('');
 const finalTranscript = ref('');
 const isBlinkVisible = ref(true);
 
-// ---- timers ----
+// timers
 let blinkTimer: number | null = null;
 let noSpeechTimer: number | null = null;
 
-// ---- handles ----
+// handles
 let ws: WebSocket | null = null;
 let audioCtx: AudioContext | null = null;
 let sourceNode: MediaStreamAudioSourceNode | null = null;
@@ -87,28 +91,21 @@ let wakeTimer: number | null = null;
 let destroyed = false;
 
 // ------------------------------------------------------------
-// 🔹 Mic permission check
+// ✅ FIXED: Firefox-safe microphone permission check
 // ------------------------------------------------------------
 async function checkMicPermission() {
   try {
-    if ('permissions' in navigator && (navigator as any).permissions.query) {
-      const status = await (navigator as any).permissions.query({
-        name: 'microphone',
-      });
-      hasMicPermission.value = status.state === 'granted';
-      status.onchange = () =>
-        (hasMicPermission.value = status.state === 'granted');
-    } else {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      hasMicPermission.value = true;
-    }
+    // ✅ DO NOT use navigator.permissions.query (broken on Firefox Android)
+    const test = await navigator.mediaDevices.getUserMedia({ audio: true });
+    test.getTracks().forEach((t) => t.stop());
+    hasMicPermission.value = true;
   } catch {
     hasMicPermission.value = false;
   }
 }
 
 // ------------------------------------------------------------
-// 🔹 Blinking control
+// Blinking
 // ------------------------------------------------------------
 watch(statusMessage, (val) => {
   if (val === 'listening') {
@@ -124,7 +121,7 @@ watch(statusMessage, (val) => {
 });
 
 // ------------------------------------------------------------
-// 🔹 Wake-word events (“up”, “up echoes”, “echoes”)
+// Wake-word events
 // ------------------------------------------------------------
 function resumeWakeWord() {
   window.dispatchEvent(
@@ -135,9 +132,10 @@ function resumeWakeWord() {
 function onKeywordDetected(e: Event) {
   const phrase = (e as CustomEvent<string>).detail?.toLowerCase?.() ?? '';
   const isTrigger = /^\s*(up(\s+echoes)?|echoes)\b/.test(phrase);
+
   if (isTrigger && hasMicPermission.value) {
     startVoiceSession();
-  } else if (isTrigger && !hasMicPermission.value) {
+  } else if (isTrigger) {
     console.warn('⚠️ Wake-word ignored: no microphone permission');
   }
 }
@@ -145,6 +143,7 @@ function onKeywordDetected(e: Event) {
 function startVoiceSession() {
   if (!hasMicPermission.value || isStreaming.value || isWakeWindow.value)
     return;
+
   resetFlags();
   isWakeWindow.value = true;
   statusMessage.value = 'preparing';
@@ -170,9 +169,10 @@ function startVoiceSession() {
 }
 
 onMounted(async () => {
-  await checkMicPermission();
+  await checkMicPermission(); // ✅ Firefox-safe now
   window.addEventListener('keyword-detected', onKeywordDetected);
 });
+
 onBeforeUnmount(() => {
   window.removeEventListener('keyword-detected', onKeywordDetected);
   cleanupAll();
@@ -187,10 +187,11 @@ function resetFlags() {
 }
 
 // ------------------------------------------------------------
-// 🔹 AssemblyAI streaming + no-speech timeout
+// Streaming Pipeline
 // ------------------------------------------------------------
 async function startStreaming() {
   if (isStreaming.value) return;
+
   try {
     const t = await fetch(TOKEN_URL);
     if (!t.ok) throw new Error(`/get_token failed: ${t.status}`);
@@ -203,19 +204,18 @@ async function startStreaming() {
 
     ws.onopen = async () => {
       statusMessage.value = 'listening';
-      if (wakeTimer) {
-        clearTimeout(wakeTimer);
-        wakeTimer = null;
-      }
-      startNoSpeechTimer(); // start 10s silence guard
+      if (wakeTimer) clearTimeout(wakeTimer);
+      startNoSpeechTimer();
       await initAudioAndPump();
     };
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+
         if (msg.type === 'Turn' && msg.transcript) {
-          resetNoSpeechTimer(); // user spoke — reset 10s guard
+          resetNoSpeechTimer();
+
           if (msg.end_of_turn) {
             partialTranscript.value = '';
             finalTranscript.value = msg.transcript;
@@ -238,13 +238,11 @@ async function startStreaming() {
   }
 }
 
-// --- no-speech watchdog ---
+// no-speech watchdog
 function startNoSpeechTimer() {
   clearNoSpeechTimer();
   noSpeechTimer = window.setTimeout(() => {
-    console.warn(
-      '⏰ No partial transcript received for 10 s — aborting stream'
-    );
+    console.warn('⏰ No partial transcript for 10s — aborting stream');
     cleanupAll();
     resetFlags();
     resumeWakeWord();
@@ -262,12 +260,13 @@ function clearNoSpeechTimer() {
 }
 
 // ------------------------------------------------------------
-// 🔹 Audio Worklet (downsample + send)
+// AudioWorklet + Downsampler
 // ------------------------------------------------------------
 async function initAudioAndPump() {
   micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   await audioCtx.resume();
+
   sourceNode = audioCtx.createMediaStreamSource(micStream);
 
   const workletCode = `
@@ -321,6 +320,7 @@ async function initAudioAndPump() {
     }
     registerProcessor('downsample-16k', DownsampleTo16k);
   `;
+
   const blob = new Blob([workletCode], { type: 'application/javascript' });
   const url = URL.createObjectURL(blob);
   await audioCtx.audioWorklet.addModule(url);
@@ -331,13 +331,11 @@ async function initAudioAndPump() {
       ws.send(e.data);
       if (!isStreaming.value) {
         isStreaming.value = true;
-        if (wakeTimer) {
-          clearTimeout(wakeTimer);
-          wakeTimer = null;
-        }
+        if (wakeTimer) clearTimeout(wakeTimer);
       }
     }
   };
+
   const g = audioCtx.createGain();
   g.gain.value = 0;
   sourceNode.connect(workletNode);
@@ -345,10 +343,11 @@ async function initAudioAndPump() {
 }
 
 // ------------------------------------------------------------
-// 🔹 Finalize (send transcript → backend → fill form)
+// Finalization + Backend
 // ------------------------------------------------------------
 async function finalize(text: string) {
   cleanupAll();
+
   const cleaned = text
     .replace(/^\s*(up(\s+echoes)?|echoes)\b[\s,.!?]*/i, '')
     .trim();
@@ -360,6 +359,7 @@ async function finalize(text: string) {
       body: JSON.stringify({ transcript: cleaned }),
     });
     const result = await resp.json();
+
     if (result.amount != null) props.form.amount = result.amount;
     if (result.token) props.form.token = result.token;
     if (result.leverage) props.form.leverage = result.leverage;
@@ -375,7 +375,7 @@ async function finalize(text: string) {
 }
 
 // ------------------------------------------------------------
-// 🔹 Cleanup helpers
+// Cleanup
 // ------------------------------------------------------------
 function cleanupAudioOnly() {
   try {
@@ -409,12 +409,15 @@ function cleanupAudioOnly() {
 function cleanupAll() {
   if (destroyed) return;
   destroyed = true;
+
   try {
     if (ws && ws.readyState === WebSocket.OPEN) ws.close(1000, 'client-end');
   } catch {}
+
   ws = null;
   cleanupAudioOnly();
   clearNoSpeechTimer();
+
   if (wakeTimer) {
     clearTimeout(wakeTimer);
     wakeTimer = null;
@@ -423,8 +426,10 @@ function cleanupAll() {
     clearInterval(blinkTimer);
     blinkTimer = null;
   }
+
   isBlinkVisible.value = true;
   isStreaming.value = false;
+
   setTimeout(() => (destroyed = false), 0);
 }
 </script>
@@ -438,7 +443,7 @@ function cleanupAll() {
 }
 .status {
   font-weight: 600;
-  min-height: 1.2em; /* keeps layout steady */
+  min-height: 1.2em;
 }
 .status.active {
   color: #42b883;
