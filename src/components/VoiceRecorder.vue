@@ -455,4 +455,19 @@ function cleanupAll() {
   width: 100%;
   word-wrap: break-word;
 }
+
+/* Light mode (default) */
+.transcript-box {
+  background: #f4f4f4;
+  color: #222;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .transcript-box {
+    background: #1e1e1e; /* dark gray box */
+    color: #e8e8e8; /* light text */
+    border: 1px solid #333; /* subtle border */
+  }
+}
 </style>
